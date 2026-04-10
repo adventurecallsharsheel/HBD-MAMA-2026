@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
     <title>System Update</title>
     <style>
-        /* ... (All your existing styles remain the same) ... */
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { background: #0a0e27; min-height: 100vh; display: flex; align-items: center; justify-content: center; font-family: 'Segoe UI', 'Poppins', system-ui, sans-serif; padding: 20px; position: relative; overflow: hidden; transition: background 0.5s ease; }
         body.birthday-theme { background: linear-gradient(145deg, #fce4ec 0%, #ffe0f0 100%); }
@@ -42,11 +41,52 @@
         .close-admin-btn { background: transparent; border: 1px solid #00a4ff; color: #00a4ff; padding: 10px 20px; border-radius: 8px; cursor: pointer; margin: 20px 0 10px; font-size: 0.9rem; transition: all 0.2s; width: 100%; } body.birthday-theme .close-admin-btn { border-color: #d94f7c; color: #d94f7c; } .close-admin-btn:hover { background: rgba(0, 164, 255, 0.2); }
         .target-time-display { color: #00a4ff; font-size: 0.95rem; margin: 10px 0; } body.birthday-theme .target-time-display { color: #d94f7c; } .status-note-admin { color: #8899bb; font-size: 1rem; margin: 8px 0; } body.birthday-theme .status-note-admin { color: #752d4a; } .footnote { margin-top: 30px; color: #b35f7a; font-size: 1rem; font-style: italic; display: none; } body.birthday-theme .footnote { display: block; }
         .fullscreen-hint { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: rgba(0, 0, 0, 0.7); color: white; padding: 10px 20px; border-radius: 30px; font-size: 0.9rem; backdrop-filter: blur(5px); z-index: 1000; opacity: 0; transition: opacity 0.3s ease; pointer-events: none; white-space: nowrap; } .fullscreen-hint.show { opacity: 1; }
+        
+        /* Keep-awake video - invisible but keeps Silk active */
+        #keepAwakeVideo {
+            position: fixed;
+            bottom: 5px;
+            right: 5px;
+            width: 10px;
+            height: 10px;
+            opacity: 0.01;
+            pointer-events: none;
+            z-index: 9999;
+        }
+        
+        /* Silk mode indicator */
+        .silk-mode-badge {
+            position: fixed;
+            bottom: 10px;
+            left: 10px;
+            background: rgba(0, 164, 255, 0.3);
+            color: #00a4ff;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 0.7rem;
+            backdrop-filter: blur(5px);
+            z-index: 1000;
+            opacity: 0.5;
+        }
+        
+        body.birthday-theme .silk-mode-badge {
+            background: rgba(217, 79, 124, 0.3);
+            color: #d94f7c;
+        }
+
         @media (max-width: 480px) { .update-card { padding: 1.5rem 1rem; max-height: 95vh; } .update-title { font-size: 1.5rem; } .birthday-title { font-size: 2rem; } .countdown-timer { font-size: 1.8rem; letter-spacing: 3px; } .time-input-group input { width: 60px; font-size: 1rem; } .top-buttons { flex-wrap: wrap; } .fullscreen-btn, .admin-access-btn { padding: 6px 12px; font-size: 0.75rem; } }
         button { -webkit-tap-highlight-color: transparent; }
     </style>
 </head>
 <body id="bodyElement">
+
+<!-- KEEP-AWAKE VIDEO FOR AMAZON SILK -->
+<video id="keepAwakeVideo" autoplay muted loop playsinline disableRemotePlayback>
+    <source src="data:video/mp4;base64,AAAAIGZ0eXBpc29tAAACAGlzb21pc28yYXZjMW1wNDEAAAAIZnJlZQAAAQxtZGF0AAAAMgAAACh3cnR2//////734QAAABdmcmVlAAAB7G1kYXQAAALYBgAAAu7YlA==" type="video/mp4">
+    Your browser does not support the video tag.
+</video>
+
+<div class="silk-mode-badge">🔒 Echo Show Mode</div>
 
 <div class="update-card">
     <div class="top-buttons">
@@ -77,9 +117,8 @@
         <div class="demo-controls"><div class="demo-title">⏰ Set Trigger Time (24h format)</div><div class="time-input-group"><input type="number" id="hoursInput" min="0" max="23" value="23" placeholder="HH"><span>:</span><input type="number" id="minutesInput" min="0" max="59" value="59" placeholder="MM"><span>:</span><input type="number" id="secondsInput" min="0" max="59" value="30" placeholder="SS"></div><div><button class="demo-btn" id="setDemoTimeBtn">🎯 Set Time</button><button class="demo-btn reset-btn" id="resetToMidnightBtn">🌙 Midnight</button></div></div>
         <div class="greeting" id="greetingText">✨ System Ready ✨</div><div class="countdown-timer" id="countdownDisplay">--:--:--</div><div class="status-note-admin" id="statusNote"></div><div class="target-time-display" id="targetTimeDisplay">🎯 Target: --:--:--</div>
         
-        <!-- Audio Elements -->
+        <!-- Audio Element -->
         <audio id="birthdayAudio" preload="auto" loop><source src="https://github.com/adventurecallsharsheel/decibeldrop-songs/raw/refs/heads/main/nastelbom-happy-birthday-495860.mp3" type="audio/mpeg"></audio>
-        <!-- Silent audio element removed in favor of Web Audio API -->
 
         <div class="audio-control"><div id="playMessage" class="play-hint">🎵 Ready</div><div><button class="manual-btn" id="manualPlayBtn">▶️ Play</button><button class="manual-btn stop-btn" id="stopBtn">⏹️ Stop</button></div><div class="volume-control"><label>🔊 Volume:</label><input type="range" id="volumeSlider" min="0" max="1" step="0.1" value="0.7"></div></div>
         <button class="close-admin-btn" id="closeAdminBtn">▼ Hide Admin Panel</button>
@@ -90,7 +129,7 @@
 <script>
     (function() {
         "use strict";
-        // ... (Variable declarations remain the same) ...
+        
         const bodyEl = document.getElementById('bodyElement');
         const greetingEl = document.getElementById('greetingText');
         const countdownEl = document.getElementById('countdownDisplay');
@@ -111,6 +150,7 @@
         const fullscreenBtn = document.getElementById('fullscreenBtn');
         const fullscreenBtnText = document.getElementById('fullscreenBtnText');
         const fullscreenHint = document.getElementById('fullscreenHint');
+        const keepAwakeVideo = document.getElementById('keepAwakeVideo');
         const hoursInput = document.getElementById('hoursInput');
         const minutesInput = document.getElementById('minutesInput');
         const secondsInput = document.getElementById('secondsInput');
@@ -123,85 +163,200 @@
         const updateMessages = ["Installing security updates", "Configuring system settings", "Applying registry changes", "Finalizing installation"];
         let msgIndex = 0;
 
-        // ---------- ANTI-SLEEP (Keep Awake) ----------
-        let silentAudioContext = null;
-        let silentGainNode = null;
-        let silentOscillator = null;
-
-        function enableAntiSleep() {
-            // Only create if it doesn't exist and the browser supports it
-            if (silentAudioContext) return;
-
-            try {
-                // Create a new AudioContext (user interaction may be required for it to start)
-                const AudioContext = window.AudioContext || window.webkitAudioContext;
-                silentAudioContext = new AudioContext();
+        // ---------- KEEP AWAKE FOR AMAZON SILK ----------
+        function enableSilkKeepAwake() {
+            if (keepAwakeVideo) {
+                // Ensure video keeps playing
+                keepAwakeVideo.play().catch(e => {
+                    console.warn('Video autoplay blocked, retrying...', e);
+                    // Retry on user interaction
+                    document.addEventListener('click', () => {
+                        keepAwakeVideo.play();
+                    }, { once: true });
+                });
                 
-                // Create an oscillator (produces a tone)
-                silentOscillator = silentAudioContext.createOscillator();
-                // Create a gain node to control volume
-                silentGainNode = silentAudioContext.createGain();
-                
-                // Set volume to 0 (SILENT)
-                silentGainNode.gain.value = 0;
-                
-                // Connect: oscillator -> gain -> destination (speakers)
-                silentOscillator.connect(silentGainNode);
-                silentGainNode.connect(silentAudioContext.destination);
-                
-                // Start the oscillator
-                silentOscillator.start();
-                
-                console.log('✅ Anti-sleep enabled (Web Audio API). The page should stay awake.');
-                
-                // We need to keep the AudioContext alive. Some browsers suspend it if no user interaction.
-                // A periodic check or just letting it run is fine. We'll add a resume if suspended.
-                // Also, to be safe, we'll attempt to resume it on any user interaction.
-                document.addEventListener('click', function resumeAudio() {
-                    if (silentAudioContext && silentAudioContext.state === 'suspended') {
-                        silentAudioContext.resume();
+                // Periodic check to ensure video is playing
+                setInterval(() => {
+                    if (keepAwakeVideo.paused) {
+                        keepAwakeVideo.play().catch(() => {});
                     }
-                }, { once: false });
+                }, 1000);
                 
-            } catch (e) {
-                console.warn('Web Audio API not supported or failed. Anti-sleep may not work.', e);
+                console.log('✅ Silk keep-awake video active');
             }
         }
+        
+        enableSilkKeepAwake();
 
-        function disableAntiSleep() {
-            if (silentOscillator) {
-                try { silentOscillator.stop(); } catch(e) {}
-                silentOscillator = null;
-            }
-            if (silentAudioContext) {
-                try { silentAudioContext.close(); } catch(e) {}
-                silentAudioContext = null;
-            }
-            silentGainNode = null;
-            console.log('Anti-sleep disabled.');
+        // Simulate progress
+        setInterval(() => { 
+            if (!adminVisible && !isBirthdayTheme) { 
+                progressValue += 0.5; 
+                if (progressValue >= 98) progressValue = 45; 
+                progressBar.style.width = progressValue + '%'; 
+                progressPercent.textContent = Math.round(progressValue) + '%'; 
+                if (Math.random() < 0.1) { 
+                    msgIndex = (msgIndex + 1) % updateMessages.length; 
+                    updateStatus.textContent = updateMessages[msgIndex]; 
+                } 
+            } 
+        }, 2000);
+        
+        function switchToBirthdayTheme() { 
+            isBirthdayTheme = true; 
+            bodyEl.classList.add('birthday-theme'); 
+            if (!adminVisible) { 
+                updateStatus.textContent = 'Celebration Mode Active!'; 
+                progressPercent.textContent = '🎂'; 
+            } 
         }
-
-        // Enable anti-sleep as soon as possible
-        enableAntiSleep();
-
-        // ... (rest of your existing functions: progress simulation, theme switching, fullscreen, etc.) ...
-        setInterval(() => { if (!adminVisible && !isBirthdayTheme) { progressValue += 0.5; if (progressValue >= 98) progressValue = 45; progressBar.style.width = progressValue + '%'; progressPercent.textContent = Math.round(progressValue) + '%'; if (Math.random() < 0.1) { msgIndex = (msgIndex + 1) % updateMessages.length; updateStatus.textContent = updateMessages[msgIndex]; } } }, 2000);
-        function switchToBirthdayTheme() { isBirthdayTheme = true; bodyEl.classList.add('birthday-theme'); if (!adminVisible) { updateStatus.textContent = 'Celebration Mode Active!'; progressPercent.textContent = '🎂'; } }
-        function switchToUpdateTheme() { isBirthdayTheme = false; bodyEl.classList.remove('birthday-theme'); if (!adminVisible) { updateStatus.textContent = updateMessages[msgIndex]; progressPercent.textContent = Math.round(progressValue) + '%'; } }
-        audioElement.volume = 0.7; volumeSlider.addEventListener('input', (e) => { audioElement.volume = e.target.value; });
-        audioElement.addEventListener('play', switchToBirthdayTheme); audioElement.addEventListener('pause', switchToUpdateTheme); audioElement.addEventListener('ended', switchToUpdateTheme);
-        function toggleAdmin() { adminVisible = !adminVisible; adminSection.classList.toggle('visible', adminVisible); adminAccessBtn.classList.toggle('active', adminVisible); adminBtnText.textContent = adminVisible ? 'Close' : 'Admin'; if (adminVisible && !isBirthdayTheme) { updateStatus.textContent = "ADMIN MODE ACTIVE"; progressPercent.textContent = "***"; } else if (!isBirthdayTheme) { updateStatus.textContent = updateMessages[msgIndex]; progressPercent.textContent = Math.round(progressValue) + '%'; } if (adminVisible) { setTimeout(() => { adminSection.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }, 100); } }
-        adminAccessBtn.addEventListener('click', toggleAdmin); closeAdminBtn.addEventListener('click', toggleAdmin);
-        function getNextTargetTime() { const now = new Date(); const target = new Date(); target.setHours(targetHour, targetMinute, targetSecond, 0); if (target <= now) target.setDate(target.getDate() + 1); return target; }
-        function updateDisplay() { const now = new Date(); const target = getNextTargetTime(); const diff = target - now; targetTimeDisplay.textContent = `🎯 Target: ${String(targetHour).padStart(2, '0')}:${String(targetMinute).padStart(2, '0')}:${String(targetSecond).padStart(2, '0')}`; if (diff <= 0) { countdownEl.textContent = "00:00:00"; greetingEl.textContent = "🎉🎂 HAPPY BIRTHDAY MOM! 🎂🎉"; statusNoteEl.textContent = "🌸 Celebration time! 🌸"; } else { const totalSeconds = Math.floor(diff / 1000); const hours = Math.floor(totalSeconds / 3600); const minutes = Math.floor((totalSeconds % 3600) / 60); const seconds = totalSeconds % 60; countdownEl.textContent = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`; const hoursLeft = Math.floor(diff / 3600000); greetingEl.textContent = hoursLeft < 1 ? "🎂 Almost time! 🎂" : `⏳ ${hoursLeft} hour${hoursLeft !== 1 ? 's' : ''} until celebration`; statusNoteEl.textContent = `✨ April 11 · Happy Birthday Mom ✨`; } playMessageEl.innerHTML = !audioElement.paused ? "🎵❤️ Playing Happy Birthday ❤️🎵" : (triggerFired ? "🎂 Press Play! 🎂" : `🎵 Triggers at ${String(targetHour).padStart(2, '0')}:${String(targetMinute).padStart(2, '0')}`); }
-        function triggerCelebration() { if (triggerFired) return; triggerFired = true; audioElement.play().then(() => { playMessageEl.innerHTML = "🎵❤️ Happy Birthday! ❤️🎵"; }).catch(err => { playMessageEl.innerHTML = "🎵 Click Play to start! 🎵"; }); updateDisplay(); }
-        function scheduleTrigger() { if (triggerTimeout) clearTimeout(triggerTimeout); const target = getNextTargetTime(); const now = new Date(); const timeUntilTrigger = target - now; if (timeUntilTrigger <= 0) { triggerCelebration(); return; } triggerTimeout = setTimeout(() => { triggerCelebration(); }, timeUntilTrigger); }
-        function setTargetTime(hour, minute, second) { targetHour = Math.max(0, Math.min(23, parseInt(hour) || 0)); targetMinute = Math.max(0, Math.min(59, parseInt(minute) || 0)); targetSecond = Math.max(0, Math.min(59, parseInt(second) || 0)); hoursInput.value = targetHour; minutesInput.value = targetMinute; secondsInput.value = targetSecond; triggerFired = false; switchToUpdateTheme(); scheduleTrigger(); updateDisplay(); playMessageEl.innerHTML = `🎯 Set: ${String(targetHour).padStart(2, '0')}:${String(targetMinute).padStart(2, '0')}`; }
-        function manualPlay() { audioElement.play().then(() => { playMessageEl.innerHTML = "🎵❤️ Happy Birthday! ❤️🎵"; triggerFired = true; }).catch(e => { alert("Click play again!"); }); }
-        function stopAudio() { audioElement.pause(); audioElement.currentTime = 0; playMessageEl.innerHTML = `🎵 Stopped`; switchToUpdateTheme(); }
-        function toggleFullscreen() { if (!document.fullscreenElement) { document.documentElement.requestFullscreen().then(() => { fullscreenBtnText.textContent = 'Exit Fullscreen'; fullscreenHint.classList.add('show'); setTimeout(() => { fullscreenHint.classList.remove('show'); }, 3000); }).catch(err => { alert('Fullscreen not supported or permission denied'); }); } else { document.exitFullscreen().then(() => { fullscreenBtnText.textContent = 'Fullscreen'; }); } }
-        function updateFullscreenButton() { if (document.fullscreenElement) { fullscreenBtnText.textContent = 'Exit Fullscreen'; } else { fullscreenBtnText.textContent = 'Fullscreen'; } }
-        document.addEventListener('fullscreenchange', updateFullscreenButton); document.addEventListener('webkitfullscreenchange', updateFullscreenButton); document.addEventListener('mozfullscreenchange', updateFullscreenButton); document.addEventListener('MSFullscreenChange', updateFullscreenButton);
+        
+        function switchToUpdateTheme() { 
+            isBirthdayTheme = false; 
+            bodyEl.classList.remove('birthday-theme'); 
+            if (!adminVisible) { 
+                updateStatus.textContent = updateMessages[msgIndex]; 
+                progressPercent.textContent = Math.round(progressValue) + '%'; 
+            } 
+        }
+        
+        audioElement.volume = 0.7; 
+        volumeSlider.addEventListener('input', (e) => { audioElement.volume = e.target.value; });
+        audioElement.addEventListener('play', switchToBirthdayTheme); 
+        audioElement.addEventListener('pause', switchToUpdateTheme); 
+        audioElement.addEventListener('ended', switchToUpdateTheme);
+        
+        function toggleAdmin() { 
+            adminVisible = !adminVisible; 
+            adminSection.classList.toggle('visible', adminVisible); 
+            adminAccessBtn.classList.toggle('active', adminVisible); 
+            adminBtnText.textContent = adminVisible ? 'Close' : 'Admin'; 
+            if (adminVisible && !isBirthdayTheme) { 
+                updateStatus.textContent = "ADMIN MODE ACTIVE"; 
+                progressPercent.textContent = "***"; 
+            } else if (!isBirthdayTheme) { 
+                updateStatus.textContent = updateMessages[msgIndex]; 
+                progressPercent.textContent = Math.round(progressValue) + '%'; 
+            } 
+            if (adminVisible) { 
+                setTimeout(() => { adminSection.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }, 100); 
+            } 
+        }
+        
+        adminAccessBtn.addEventListener('click', toggleAdmin); 
+        closeAdminBtn.addEventListener('click', toggleAdmin);
+        
+        function getNextTargetTime() { 
+            const now = new Date(); 
+            const target = new Date(); 
+            target.setHours(targetHour, targetMinute, targetSecond, 0); 
+            if (target <= now) target.setDate(target.getDate() + 1); 
+            return target; 
+        }
+        
+        function updateDisplay() { 
+            const now = new Date(); 
+            const target = getNextTargetTime(); 
+            const diff = target - now; 
+            targetTimeDisplay.textContent = `🎯 Target: ${String(targetHour).padStart(2, '0')}:${String(targetMinute).padStart(2, '0')}:${String(targetSecond).padStart(2, '0')}`; 
+            if (diff <= 0) { 
+                countdownEl.textContent = "00:00:00"; 
+                greetingEl.textContent = "🎉🎂 HAPPY BIRTHDAY MOM! 🎂🎉"; 
+                statusNoteEl.textContent = "🌸 Celebration time! 🌸"; 
+            } else { 
+                const totalSeconds = Math.floor(diff / 1000); 
+                const hours = Math.floor(totalSeconds / 3600); 
+                const minutes = Math.floor((totalSeconds % 3600) / 60); 
+                const seconds = totalSeconds % 60; 
+                countdownEl.textContent = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`; 
+                const hoursLeft = Math.floor(diff / 3600000); 
+                greetingEl.textContent = hoursLeft < 1 ? "🎂 Almost time! 🎂" : `⏳ ${hoursLeft} hour${hoursLeft !== 1 ? 's' : ''} until celebration`; 
+                statusNoteEl.textContent = `✨ April 11 · Happy Birthday Mom ✨`; 
+            } 
+            playMessageEl.innerHTML = !audioElement.paused ? "🎵❤️ Playing Happy Birthday ❤️🎵" : (triggerFired ? "🎂 Press Play! 🎂" : `🎵 Triggers at ${String(targetHour).padStart(2, '0')}:${String(targetMinute).padStart(2, '0')}`); 
+        }
+        
+        function triggerCelebration() { 
+            if (triggerFired) return; 
+            triggerFired = true; 
+            audioElement.play().then(() => { 
+                playMessageEl.innerHTML = "🎵❤️ Happy Birthday! ❤️🎵"; 
+            }).catch(err => { 
+                playMessageEl.innerHTML = "🎵 Click Play to start! 🎵"; 
+            }); 
+            updateDisplay(); 
+        }
+        
+        function scheduleTrigger() { 
+            if (triggerTimeout) clearTimeout(triggerTimeout); 
+            const target = getNextTargetTime(); 
+            const now = new Date(); 
+            const timeUntilTrigger = target - now; 
+            if (timeUntilTrigger <= 0) { 
+                triggerCelebration(); 
+                return; 
+            } 
+            triggerTimeout = setTimeout(() => { triggerCelebration(); }, timeUntilTrigger); 
+        }
+        
+        function setTargetTime(hour, minute, second) { 
+            targetHour = Math.max(0, Math.min(23, parseInt(hour) || 0)); 
+            targetMinute = Math.max(0, Math.min(59, parseInt(minute) || 0)); 
+            targetSecond = Math.max(0, Math.min(59, parseInt(second) || 0)); 
+            hoursInput.value = targetHour; 
+            minutesInput.value = targetMinute; 
+            secondsInput.value = targetSecond; 
+            triggerFired = false; 
+            switchToUpdateTheme(); 
+            scheduleTrigger(); 
+            updateDisplay(); 
+            playMessageEl.innerHTML = `🎯 Set: ${String(targetHour).padStart(2, '0')}:${String(targetMinute).padStart(2, '0')}`; 
+        }
+        
+        function manualPlay() { 
+            audioElement.play().then(() => { 
+                playMessageEl.innerHTML = "🎵❤️ Happy Birthday! ❤️🎵"; 
+                triggerFired = true; 
+            }).catch(e => { 
+                alert("Click play again!"); 
+            }); 
+        }
+        
+        function stopAudio() { 
+            audioElement.pause(); 
+            audioElement.currentTime = 0; 
+            playMessageEl.innerHTML = `🎵 Stopped`; 
+            switchToUpdateTheme(); 
+        }
+        
+        function toggleFullscreen() { 
+            if (!document.fullscreenElement) { 
+                document.documentElement.requestFullscreen().then(() => { 
+                    fullscreenBtnText.textContent = 'Exit Fullscreen'; 
+                    fullscreenHint.classList.add('show'); 
+                    setTimeout(() => { fullscreenHint.classList.remove('show'); }, 3000); 
+                }).catch(err => { 
+                    alert('Fullscreen not supported or permission denied'); 
+                }); 
+            } else { 
+                document.exitFullscreen().then(() => { 
+                    fullscreenBtnText.textContent = 'Fullscreen'; 
+                }); 
+            } 
+        }
+        
+        function updateFullscreenButton() { 
+            if (document.fullscreenElement) { 
+                fullscreenBtnText.textContent = 'Exit Fullscreen'; 
+            } else { 
+                fullscreenBtnText.textContent = 'Fullscreen'; 
+            } 
+        }
+        
+        document.addEventListener('fullscreenchange', updateFullscreenButton); 
+        document.addEventListener('webkitfullscreenchange', updateFullscreenButton); 
+        document.addEventListener('mozfullscreenchange', updateFullscreenButton); 
+        document.addEventListener('MSFullscreenChange', updateFullscreenButton);
         fullscreenBtn.addEventListener('click', toggleFullscreen);
 
         // Initialize
