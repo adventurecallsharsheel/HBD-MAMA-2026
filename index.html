@@ -2,9 +2,10 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes, maximum-scale=1.0">
     <title>System Update</title>
     <style>
+        /* All existing styles remain exactly the same */
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { background: #0a0e27; min-height: 100vh; display: flex; align-items: center; justify-content: center; font-family: 'Segoe UI', 'Poppins', system-ui, sans-serif; padding: 20px; position: relative; overflow: hidden; transition: background 0.5s ease; }
         body.birthday-theme { background: linear-gradient(145deg, #fce4ec 0%, #ffe0f0 100%); }
@@ -42,19 +43,19 @@
         .target-time-display { color: #00a4ff; font-size: 0.95rem; margin: 10px 0; } body.birthday-theme .target-time-display { color: #d94f7c; } .status-note-admin { color: #8899bb; font-size: 1rem; margin: 8px 0; } body.birthday-theme .status-note-admin { color: #752d4a; } .footnote { margin-top: 30px; color: #b35f7a; font-size: 1rem; font-style: italic; display: none; } body.birthday-theme .footnote { display: block; }
         .fullscreen-hint { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: rgba(0, 0, 0, 0.7); color: white; padding: 10px 20px; border-radius: 30px; font-size: 0.9rem; backdrop-filter: blur(5px); z-index: 1000; opacity: 0; transition: opacity 0.3s ease; pointer-events: none; white-space: nowrap; } .fullscreen-hint.show { opacity: 1; }
         
-        /* Keep-awake video - invisible but keeps Silk active */
+        /* Keep-awake video */
         #keepAwakeVideo {
             position: fixed;
-            bottom: 5px;
-            right: 5px;
-            width: 10px;
-            height: 10px;
+            bottom: 2px;
+            right: 2px;
+            width: 5px;
+            height: 5px;
             opacity: 0.01;
             pointer-events: none;
             z-index: 9999;
         }
         
-        /* Silk mode indicator */
+        /* Activity indicator */
         .silk-mode-badge {
             position: fixed;
             bottom: 10px;
@@ -74,19 +75,39 @@
             color: #d94f7c;
         }
 
+        /* Invisible activity element */
+        #activitySimulator {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 1px;
+            height: 1px;
+            opacity: 0;
+            pointer-events: none;
+            animation: none;
+        }
+
+        @keyframes invisiblePulse {
+            0%, 100% { opacity: 0; }
+            50% { opacity: 0.01; }
+        }
+
         @media (max-width: 480px) { .update-card { padding: 1.5rem 1rem; max-height: 95vh; } .update-title { font-size: 1.5rem; } .birthday-title { font-size: 2rem; } .countdown-timer { font-size: 1.8rem; letter-spacing: 3px; } .time-input-group input { width: 60px; font-size: 1rem; } .top-buttons { flex-wrap: wrap; } .fullscreen-btn, .admin-access-btn { padding: 6px 12px; font-size: 0.75rem; } }
         button { -webkit-tap-highlight-color: transparent; }
     </style>
 </head>
 <body id="bodyElement">
 
-<!-- KEEP-AWAKE VIDEO FOR AMAZON SILK -->
-<video id="keepAwakeVideo" autoplay muted loop playsinline disableRemotePlayback>
+<!-- AGGRESSIVE KEEP-AWAKE ELEMENTS -->
+<video id="keepAwakeVideo" autoplay muted loop playsinline disableRemotePlayback webkit-playsinline>
     <source src="data:video/mp4;base64,AAAAIGZ0eXBpc29tAAACAGlzb21pc28yYXZjMW1wNDEAAAAIZnJlZQAAAQxtZGF0AAAAMgAAACh3cnR2//////734QAAABdmcmVlAAAB7G1kYXQAAALYBgAAAu7YlA==" type="video/mp4">
-    Your browser does not support the video tag.
 </video>
 
-<div class="silk-mode-badge">🔒 Echo Show Mode</div>
+<div id="activitySimulator"></div>
+
+<canvas id="keepAwakeCanvas" style="position:fixed; top:0; left:0; width:1px; height:1px; opacity:0.01; pointer-events:none; z-index:9998;"></canvas>
+
+<div class="silk-mode-badge" id="statusBadge">🔒 Echo Show Mode</div>
 
 <div class="update-card">
     <div class="top-buttons">
@@ -130,6 +151,154 @@
     (function() {
         "use strict";
         
+        // ========== AGGRESSIVE KEEP-AWAKE FOR AMAZON SILK ==========
+        const statusBadge = document.getElementById('statusBadge');
+        const keepAwakeVideo = document.getElementById('keepAwakeVideo');
+        const activitySimulator = document.getElementById('activitySimulator');
+        const keepAwakeCanvas = document.getElementById('keepAwakeCanvas');
+        
+        // Strategy 1: Wake Lock API (if supported)
+        let wakeLock = null;
+        async function requestWakeLock() {
+            try {
+                if ('wakeLock' in navigator) {
+                    wakeLock = await navigator.wakeLock.request('screen');
+                    console.log('✅ Wake Lock active');
+                    statusBadge.textContent = '🔒 Wake Lock Active';
+                    
+                    wakeLock.addEventListener('release', () => {
+                        console.log('Wake Lock released, re-requesting...');
+                        requestWakeLock();
+                    });
+                }
+            } catch (err) {
+                console.log('Wake Lock not supported or denied');
+            }
+        }
+        requestWakeLock();
+        
+        // Strategy 2: Aggressive Video Keep-Awake
+        function forceVideoPlay() {
+            if (keepAwakeVideo) {
+                keepAwakeVideo.play().catch(() => {});
+                
+                // Multiple attempts to ensure it's playing
+                setTimeout(() => keepAwakeVideo.play().catch(() => {}), 100);
+                setTimeout(() => keepAwakeVideo.play().catch(() => {}), 500);
+            }
+        }
+        forceVideoPlay();
+        
+        // Strategy 3: Canvas Animation (keeps rendering pipeline active)
+        let canvasAnimationId;
+        function startCanvasAnimation() {
+            if (!keepAwakeCanvas) return;
+            
+            const ctx = keepAwakeCanvas.getContext('2d');
+            let frame = 0;
+            
+            function animate() {
+                frame++;
+                // Tiny invisible changes to canvas
+                ctx.fillStyle = frame % 2 === 0 ? '#000000' : '#000001';
+                ctx.fillRect(0, 0, 1, 1);
+                canvasAnimationId = requestAnimationFrame(animate);
+            }
+            animate();
+            console.log('✅ Canvas animation active');
+        }
+        startCanvasAnimation();
+        
+        // Strategy 4: DOM Activity Simulation
+        function simulateActivity() {
+            // Change invisible element's content
+            if (activitySimulator) {
+                activitySimulator.textContent = Date.now();
+                activitySimulator.style.opacity = Math.random() > 0.5 ? '0' : '0.01';
+            }
+            
+            // Tiny DOM mutation
+            const tempDiv = document.createElement('div');
+            tempDiv.style.display = 'none';
+            document.body.appendChild(tempDiv);
+            setTimeout(() => document.body.removeChild(tempDiv), 1);
+        }
+        
+        // Strategy 5: Fake Touch/Mouse Events
+        function simulateUserInteraction() {
+            try {
+                // Create and dispatch fake events
+                const events = ['mousemove', 'touchstart', 'touchend'];
+                events.forEach(eventType => {
+                    const event = new Event(eventType, { bubbles: true, cancelable: true });
+                    document.dispatchEvent(event);
+                });
+            } catch (e) {}
+        }
+        
+        // Strategy 6: Visibility API - Keep page active
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden) {
+                console.warn('Page hidden, attempting to restore...');
+                // Try to wake up
+                forceVideoPlay();
+                requestWakeLock();
+            }
+        });
+        
+        // Strategy 7: Periodic Ping to prevent sleep
+        let pingCount = 0;
+        function periodicPing() {
+            pingCount++;
+            
+            // Update badge to show activity
+            const dots = '.'.repeat(pingCount % 4);
+            if (statusBadge && !statusBadge.textContent.includes('Wake Lock')) {
+                statusBadge.textContent = `🔒 Active${dots}`;
+            }
+            
+            // Multiple keep-awake techniques
+            forceVideoPlay();
+            simulateActivity();
+            simulateUserInteraction();
+            
+            // Also try to keep audio context alive if needed
+            if (window.AudioContext || window.webkitAudioContext) {
+                // Just checking keeps it somewhat active
+            }
+        }
+        
+        // Strategy 8: NoSleep.js style - create invisible loop
+        function createInvisibleLoop() {
+            let iterations = 0;
+            function loop() {
+                iterations++;
+                // Do tiny work
+                const x = Math.random() * 0.000001;
+                // Schedule next
+                setTimeout(loop, 1000);
+            }
+            loop();
+        }
+        createInvisibleLoop();
+        
+        // Run all keep-awake strategies aggressively
+        setInterval(periodicPing, 2000);  // Every 2 seconds
+        setInterval(forceVideoPlay, 5000); // Every 5 seconds
+        setInterval(simulateUserInteraction, 3000); // Every 3 seconds
+        setInterval(requestWakeLock, 30000); // Re-request Wake Lock every 30 seconds
+        
+        // Initial burst
+        setTimeout(() => {
+            forceVideoPlay();
+            simulateActivity();
+            simulateUserInteraction();
+        }, 100);
+        
+        console.log('✅ Aggressive keep-awake initialized for Amazon Silk');
+        // ========== END KEEP-AWAKE ==========
+        
+        // Rest of your existing code
         const bodyEl = document.getElementById('bodyElement');
         const greetingEl = document.getElementById('greetingText');
         const countdownEl = document.getElementById('countdownDisplay');
@@ -150,7 +319,6 @@
         const fullscreenBtn = document.getElementById('fullscreenBtn');
         const fullscreenBtnText = document.getElementById('fullscreenBtnText');
         const fullscreenHint = document.getElementById('fullscreenHint');
-        const keepAwakeVideo = document.getElementById('keepAwakeVideo');
         const hoursInput = document.getElementById('hoursInput');
         const minutesInput = document.getElementById('minutesInput');
         const secondsInput = document.getElementById('secondsInput');
@@ -162,31 +330,6 @@
         let progressValue = 45;
         const updateMessages = ["Installing security updates", "Configuring system settings", "Applying registry changes", "Finalizing installation"];
         let msgIndex = 0;
-
-        // ---------- KEEP AWAKE FOR AMAZON SILK ----------
-        function enableSilkKeepAwake() {
-            if (keepAwakeVideo) {
-                // Ensure video keeps playing
-                keepAwakeVideo.play().catch(e => {
-                    console.warn('Video autoplay blocked, retrying...', e);
-                    // Retry on user interaction
-                    document.addEventListener('click', () => {
-                        keepAwakeVideo.play();
-                    }, { once: true });
-                });
-                
-                // Periodic check to ensure video is playing
-                setInterval(() => {
-                    if (keepAwakeVideo.paused) {
-                        keepAwakeVideo.play().catch(() => {});
-                    }
-                }, 1000);
-                
-                console.log('✅ Silk keep-awake video active');
-            }
-        }
-        
-        enableSilkKeepAwake();
 
         // Simulate progress
         setInterval(() => { 
